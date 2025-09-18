@@ -38,7 +38,8 @@ async def populate_queue(workqueue: Workqueue):
             "2078ac36-b687-4723-bed7-2445e5c30a6f",
             "aa705e32-6388-4a9a-b4e4-3140fd529834",
             "fa1a14f3-7b57-44d3-b784-fb44cef71866",
-            "ed5a3f7e-dd8c-41a5-974a-6d7b4f833d93"
+            "ed5a3f7e-dd8c-41a5-974a-6d7b4f833d93",
+            "30373c64-75ae-466d-8d1c-04073eef360d"
         ]
     },
     {
@@ -69,13 +70,23 @@ async def populate_queue(workqueue: Workqueue):
 
 
     for virksomhed in virksomheder:
+
+        # Tjek om virksomheden har "Passiv - virksomhedsbank" tag
+        har_passiv_markering = False
+        if "tags" in virksomhed and virksomhed["tags"]:
+            har_passiv_markering = any(
+                tag.get("title", "").strip() == "Passiv - Virksomhedsbank" 
+                for tag in virksomhed["tags"]
+            )
+
         kø_item ={
             "cvr": virksomhed["cvr"],
             "pNummer": virksomhed["pNumber"],
             "virksomhedsnavn": virksomhed["displayName"].strip(),
             "virksomhedsreferenceId": virksomhed["productionUnitId"],
             "aktiv": virksomhed["isActive"],
-            "kommunekode": int(virksomhed["municipalityId"])
+            "kommunekode": int(virksomhed["municipalityId"]),
+            "har_passiv_markering": har_passiv_markering
         }
 
         try:
@@ -139,27 +150,29 @@ async def process_workqueue(workqueue: Workqueue):
                 if antal_aktiviter > 1:
                     
                     logger.info("Mere end en aktivitet fundet på virksomhed")
-                    nuværende_markeringer = momentum.markeringer.hent_markeringer(item_data.virksomhedsreferenceId)
                     
-                    # Tjekker om markering allerede findes
-                    markering_exists = any(
-                        markering.get("tag", {}).get("title").strip() == "Tjek til virksomhedsbank" 
-                        for markering in nuværende_markeringer
-                    )
-                    
-                    if markering_exists:
-                        logger.info("Virksomhed har allerede markering")
-                        tracker.track_partial_task(proces_navn)
-                    else:
+                    if item_data.har_passiv_markering:
+                        #Hvis virksomhed har en "passiv - virksomhed" markering skal denne markering
                         momentum.markeringer.opret_markering(
                             markeringsnavn="Tjek til virksomhedsbank",
                             referenceId=item_data.virksomhedsreferenceId,
                             start_dato=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.000Z")
-                            )
-                        logger.info("Markering oprettet på virksomhed")
-                        tracker.track_task(proces_navn)
+                        )
+                        logger.info("Markering 'Tjek til virksomhedsbank' oprettet på virksomhed")
+                    else:
+                        #ellers skal den have den markering
+                        momentum.markeringer.opret_markering(
+                            markeringsnavn="Tjek til virksomhedsbank - ny portefølje",
+                            referenceId=item_data.virksomhedsreferenceId,
+                            start_dato=datetime.now().strftime("%Y-%m-%dT%H:%M:%S.000Z")
+                        )
+                        logger.info("Markering 'Tjek til virksomhedsbank - ny portefølje' oprettet på virksomhed")
+                    #afregn opgave
+                    tracker.track_task(proces_navn)
                 else:
+                    #afregn delopgave
                     tracker.track_partial_task(proces_navn)
+
             except WorkItemError as e:
                 # A WorkItemError represents a soft error that indicates the item should be passed to manual processing or a business logic fault
                 logger.error(f"Error processing item: {item_data.pNummer}. Error: {e}")

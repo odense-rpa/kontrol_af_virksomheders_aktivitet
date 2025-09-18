@@ -14,6 +14,7 @@ class Virksomhed(BaseModel):
     virksomhedsreferenceId: str
     aktiv: bool
     kommunekode: int
+    har_passiv_markering: bool
 
 
 
