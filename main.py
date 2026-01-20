@@ -66,7 +66,7 @@ async def populate_queue(workqueue: Workqueue):
     ]
 
     # Hent virksomheder
-    virksomheder = hent_alle_virksomheder_med_filter(filter)
+    virksomheder = momentum.virksomheder.hent_virksomheder(filters=filter)
 
 
     for virksomhed in virksomheder:
@@ -177,40 +177,6 @@ async def process_workqueue(workqueue: Workqueue):
                 # A WorkItemError represents a soft error that indicates the item should be passed to manual processing or a business logic fault
                 logger.error(f"Error processing item: {item_data.pNummer}. Error: {e}")
                 item.fail(str(e))
-
-
-def hent_alle_virksomheder_med_filter(filters, søgeterm=""):
-    """
-    Henter alle virksomheder fra alle sider ved hjælp af de angivne filtre.
-    
-    Args:
-        filters: Filterkriterierne til søgningen
-        søgeterm: Søgeord (standard tom streng)
-        
-    Returns:
-        Liste over alle virksomheder fra alle sider
-    """
-    logger = logging.getLogger(__name__)
-    virksomheder = []
-    
-    # Get first page to determine total pages
-    sidetal = 0
-    første_side = momentum.virksomheder.hent_virksomheder(filters=filters, søgeterm=søgeterm, sidetal_resultater=sidetal)
-    
-    virksomheder.extend(første_side["data"])
-    
-    # Get total pages from first result
-    total_pages = første_side["totalPages"]
-    logger.info(f"Total pages to process: {total_pages}")
-    
-    # Loop through remaining pages (starting from page 1 since we already got page 0)
-    for page_num in range(1, total_pages):
-        logger.info(f"Fetching page {page_num + 1} of {total_pages}")
-        page_result = momentum.virksomheder.hent_virksomheder(filters=filters, søgeterm=søgeterm, sidetal_resultater=page_num)
-        
-        virksomheder.extend(page_result["data"])
-    
-    return virksomheder
 
 
 if __name__ == "__main__":
