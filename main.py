@@ -66,8 +66,8 @@ async def populate_queue(workqueue: Workqueue):
     ]
 
     # Hent virksomheder
-    virksomheder = momentum.virksomheder.hent_virksomheder(filters=filter)
-
+    virksomheder_data = momentum.virksomheder.hent_virksomheder(filters=filter)
+    virksomheder = virksomheder_data["data"]
 
     for virksomhed in virksomheder:
 
