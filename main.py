@@ -15,7 +15,7 @@ load_dotenv()
 
 tracker: Tracker
 
-momentum = None
+momentum: MomentumClientManager
 proces_navn = "kontrol af virksomhedsaktivitet"
 
 async def populate_queue(workqueue: Workqueue):
@@ -117,14 +117,14 @@ async def process_workqueue(workqueue: Workqueue):
                 formatted_date = six_months_back.strftime("%Y-%m-%dT22:00:00.000Z")
                 
                 Borgere_i_tilbud_filter = [
-                    {
-                        "fieldName": "end",
-                        "values": [
-                            formatted_date,
-                            None,
-                            False
-                        ]
-                    }
+                        {
+                            "fieldName": "end",
+                            "values": [
+                                None,
+                                formatted_date,
+                                "false"
+                            ]
+                        }
                 ]
 
                 jobordre_filter = [
@@ -133,12 +133,14 @@ async def process_workqueue(workqueue: Workqueue):
                         "values": [
                             formatted_date,
                             None,
-                            False
+                            "false"
                         ]
                     },
                     {
-                        "values": item_data.virksomhedsreferenceId,
-                        "fieldName": "providerId"
+                        "fieldName": "providerId",
+                        "values": [
+                            item_data.virksomhedsreferenceId,
+                        ]
                     }
                 ]
 
@@ -177,7 +179,6 @@ async def process_workqueue(workqueue: Workqueue):
                 # A WorkItemError represents a soft error that indicates the item should be passed to manual processing or a business logic fault
                 logger.error(f"Error processing item: {item_data.pNummer}. Error: {e}")
                 item.fail(str(e))
-
 
 if __name__ == "__main__":
     ats = AutomationServer.from_environment()
